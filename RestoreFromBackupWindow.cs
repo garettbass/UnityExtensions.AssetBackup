@@ -193,6 +193,7 @@ namespace UnityExtensions
                 this.showAlternatingRowBackgrounds = true;
                 this.showBorder = true;
                 this.rowHeight += 2;
+                this.baseIndent = -11;
                 m_asset = asset;
                 Reload();
             }
@@ -235,8 +236,7 @@ namespace UnityExtensions
                         .image as Texture2D;
                     var backupFiles =
                         AssetBackup
-                        .EnumerateBackupFiles(m_asset)
-                        .Reverse();
+                        .EnumerateBackupFiles(m_asset);
                     foreach (var backupFile in backupFiles)
                     {
                         var id = m_rootItem.children.Count;

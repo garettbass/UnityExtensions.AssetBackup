@@ -13,30 +13,8 @@ namespace UnityExtensions
     public class AssetBackup : UnityEditor.AssetModificationProcessor
     {
 
-        private static readonly string ProjectPath =
+        public static readonly string ProjectPath =
             Path.GetDirectoryName(UnityEngine.Application.dataPath);
-
-        //----------------------------------------------------------------------
-
-        private static AssetMoveResult OnWillMoveAsset(
-            string sourcePath,
-            string targetPath)
-        {
-            Debug.Log($"TODO: move backups from '{sourcePath}' to '{targetPath}'");
-            return AssetMoveResult.DidNotMove;
-        }
-
-        private static string[] OnWillSaveAssets(string[] assetPaths)
-        {
-            foreach (var assetPath in assetPaths)
-            {
-                BackupAsset(assetPath);
-                var assetMetaPath = $"{assetPath}.meta";
-                if (assetPaths.Contains(assetMetaPath) == false)
-                    BackupAsset(assetMetaPath);
-            }
-            return assetPaths;
-        }
 
         //----------------------------------------------------------------------
 
@@ -49,16 +27,82 @@ namespace UnityExtensions
 
         //----------------------------------------------------------------------
 
-        public static void BackupAsset(string assetPath)
+        private const string BackupPathRoot = "Backups/";
+
+        public static bool AnyAssetBackupsExist()
+        {
+            var fullBackupPath = Path.Combine(ProjectPath, BackupPathRoot);
+            return Directory.Exists(fullBackupPath);
+        }
+
+        public static void DeleteAllAssetBackups()
+        {
+            var fullBackupPath = Path.Combine(ProjectPath, BackupPathRoot);
+            if (Directory.Exists(fullBackupPath))
+                Directory.Delete(fullBackupPath, recursive: true);
+        }
+
+        //----------------------------------------------------------------------
+
+        private static AssetMoveResult OnWillMoveAsset(
+            string sourcePath,
+            string targetPath)
+        {
+            if (AssetBackupPreferences.assetBackupEnabled)
+            {
+                MoveAssetBackup(sourcePath, targetPath);
+            }
+            return AssetMoveResult.DidNotMove;
+        }
+
+        private static void MoveAssetBackup(
+            string oldAssetPath,
+            string newAssetPath)
+        {
+            if (!HasAssetPathRoot(oldAssetPath))
+                return;
+
+            var newBackupPathPrefix =
+                FormatBackupPathWithoutTimestamp(newAssetPath);
+            var oldBackupPaths = GetBackupPaths(oldAssetPath);
+            foreach (var oldBackupPath in oldBackupPaths)
+            {
+                var backupTime = ParseBackupPathTimestamp(oldBackupPath);
+                var newBackupPath =
+                    newBackupPathPrefix +
+                    FormatTimestamp(backupTime);
+                File.Move(oldBackupPath, newBackupPath);
+                File.SetLastWriteTime(newBackupPath, backupTime);
+                Debug.Log(
+                    $"moved '{GetShortBackupPath(oldBackupPath)}' "+
+                    $"to '{GetShortBackupPath(newBackupPath)}'");
+            }
+        }
+
+        //----------------------------------------------------------------------
+
+        private static string[] OnWillSaveAssets(string[] assetPaths)
+        {
+            if (AssetBackupPreferences.assetBackupEnabled)
+            {
+                foreach (var assetPath in assetPaths)
+                {
+                    SaveAssetBackup(assetPath);
+                }
+            }
+            return assetPaths;
+        }
+
+        public static void SaveAssetBackup(string assetPath)
         {
             if (!HasAssetPathRoot(assetPath))
                 return;
 
-            var sourcePath = Path.Combine(ProjectPath, assetPath);
-            if (!File.Exists(sourcePath))
+            var fullAssetPath = Path.Combine(ProjectPath, assetPath);
+            if (!File.Exists(fullAssetPath))
                 return;
 
-            var backupTime = File.GetLastWriteTime(sourcePath);
+            var backupTime = File.GetLastWriteTime(fullAssetPath);
             var backupPath =
                 FormatBackupPathWithoutTimestamp(assetPath) +
                 FormatTimestamp(backupTime);
@@ -68,11 +112,26 @@ namespace UnityExtensions
 
             if (File.Exists(backupPath) == false)
             {
-                File.Copy(sourcePath, backupPath);
+                File.Copy(fullAssetPath, backupPath);
                 File.SetLastWriteTime(backupPath, backupTime);
             }
-            var shortBackupPath = GetShortBackupPath(backupPath);
-            Debug.Log($"backed up '{assetPath}' to '{shortBackupPath}'");
+            Debug.Log(
+                $"backed up '{assetPath}' "+
+                $"to '{GetShortBackupPath(backupPath)}'");
+
+            DeleteExcessAssetBackups(assetPath);
+        }
+
+        private static void DeleteExcessAssetBackups(string assetPath)
+        {
+            var backupPaths = GetBackupPaths(assetPath);
+            var backupCount = backupPaths.Length;
+            var maxBackupCount = AssetBackupPreferences.maxBackupsPerAsset;
+            for (int i = maxBackupCount, n = backupCount; i < n; ++i)
+            {
+                var excessBackupPath = backupPaths[i];
+                File.Delete(excessBackupPath);
+            }
         }
 
         //----------------------------------------------------------------------
@@ -86,7 +145,7 @@ namespace UnityExtensions
         {
             Debug.Assert(HasAssetPathRoot(assetPath));
             var assetSubpath = assetPath.Substring(AssetPathRoot.Length);
-            return Path.Combine(ProjectPath, $"Backups/{assetSubpath}");
+            return Path.Combine(ProjectPath, $"{BackupPathRoot}{assetSubpath}");
         }
 
         private static DateTime ParseBackupPathTimestamp(string backupPath)
@@ -127,7 +186,7 @@ namespace UnityExtensions
         {
             return 
                 HasAssetPathRoot(assetPath) &&
-                EnumerateBackupPaths(assetPath).Any();
+                GetBackupPaths(assetPath).Any();
         }
 
         [MenuItem(
@@ -187,7 +246,7 @@ namespace UnityExtensions
 
         private static readonly string[] NoBackupPaths = new string[0];
 
-        public static IEnumerable<string> EnumerateBackupPaths(
+        public static string[] GetBackupPaths(
             string assetPath)
         {
             if (string.IsNullOrEmpty(assetPath))
@@ -204,7 +263,9 @@ namespace UnityExtensions
                 Directory
                 .EnumerateFiles(backupDir)
                 .Where(backupPath => backupPath.StartsWith(backupPathPrefix))
-                .OrderBy(backupPath => backupPath);
+                .OrderBy(backupPath => backupPath)
+                .Reverse()
+                .ToArray();
         }
 
         public static IEnumerable<BackupFile> EnumerateBackupFiles(
@@ -218,7 +279,7 @@ namespace UnityExtensions
             string assetPath)
         {
             return
-                EnumerateBackupPaths(assetPath)
+                GetBackupPaths(assetPath)
                 .Select(backupPath =>
                     new BackupFile(
                         backupPath,

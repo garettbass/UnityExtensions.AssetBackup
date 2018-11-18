@@ -10,9 +10,10 @@ The `Restore From Backup` window will open, and you can select which backup file
 
 When you click the `Restore` button, the backup file will be copied over the selected asset and the AssetDatabase will be refreshed.  If the restored asset is the active scene, it will be reloaded.
 
+# Preferences
+
+![Preferences](Preferences.png)
+
 # Future Ideas
 
-* Add a Preference Pane with the following options:
-
-    * Maximum number of backups to keep?
-    * Which asset types to backup?
+* Add a preference option to select which asset types to backup?

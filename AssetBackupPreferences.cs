@@ -152,9 +152,9 @@ namespace UnityExtensions
             {
                 var deleteAllAssetBackups =
                     EditorUtility.DisplayDialog(
-                        "Delete All Asset Backups",
-                        "Are you sure?",
-                        "Delete All Asset Backups", "Cancel");
+                        "Delete All Asset Backups?",
+                        "You cannot undo this action.",
+                        "Delete", "Cancel");
                 if (deleteAllAssetBackups)
                     AssetBackup.DeleteAllAssetBackups();
             }

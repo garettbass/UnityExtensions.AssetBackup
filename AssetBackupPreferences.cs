@@ -123,8 +123,9 @@ namespace UnityExtensions
             var projectPath = AssetBackup.ProjectPath;
             var backupsPath = Path.Combine(projectPath, "Backups");
             EditorGUILayout.HelpBox(
-                "When Asset Backup is enabled, a backup of will be saved "+
-                "just before an asset is saved by Unity.",
+                "When Asset Backup is enabled, a backup copy of the asset "+
+                "will be made just before it is saved by Unity.\n\n"+
+                "Backups are stored in <project-path>/Backups",
                 MessageType.None);
 
             var oldAssetBackupEnabled = assetBackupEnabled;

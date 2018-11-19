@@ -73,9 +73,9 @@ namespace UnityExtensions
                     FormatTimestamp(backupTime);
                 File.Move(oldBackupPath, newBackupPath);
                 File.SetLastWriteTime(newBackupPath, backupTime);
-                Debug.Log(
-                    $"moved '{GetShortBackupPath(oldBackupPath)}' "+
-                    $"to '{GetShortBackupPath(newBackupPath)}'");
+                // Debug.Log(
+                //     $"moved '{GetShortBackupPath(oldBackupPath)}' "+
+                //     $"to '{GetShortBackupPath(newBackupPath)}'");
             }
         }
 
@@ -115,9 +115,9 @@ namespace UnityExtensions
                 File.Copy(fullAssetPath, backupPath);
                 File.SetLastWriteTime(backupPath, backupTime);
             }
-            Debug.Log(
-                $"backed up '{assetPath}' "+
-                $"to '{GetShortBackupPath(backupPath)}'");
+            // Debug.Log(
+            //     $"backed up '{assetPath}' "+
+            //     $"to '{GetShortBackupPath(backupPath)}'");
 
             DeleteExcessAssetBackups(assetPath);
         }
@@ -226,7 +226,7 @@ namespace UnityExtensions
             AssetDatabase.ImportAsset(assetPath);
             AssetDatabase.Refresh();
             var shortBackupPath = GetShortBackupPath(backupPath);
-            Debug.Log($"restored '{assetPath}' from '{shortBackupPath}'");
+            // Debug.Log($"restored '{assetPath}' from '{shortBackupPath}'");
             if (EditorSceneManager.GetActiveScene().path == assetPath)
             {
                 EditorSceneManager.OpenScene(assetPath, OpenSceneMode.Single);
